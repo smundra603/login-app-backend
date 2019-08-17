@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon --exec babel-node src/server.js",
+    "local:start": "nodemon --exec babel-node src/server.js",
+    "start": "node dist/server.js",
     "build": "npm run clean & babel src --out-dir dist",
-    "serve": "node dist/server.js",
     "clean": "rm -rf dist",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": "8.x"
   },
   "keywords": [],
   "author": "",
