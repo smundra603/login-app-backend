@@ -5,11 +5,10 @@ require('dotenv').config();
 
 const mongoURI = process.env.MONGODB_URI;
 
-console.log('mongoURI', mongoURI);
 // CONNECTION EVENTS
 // When successfully connected
 mongoose.connection.on('connected', () => {
-  console.log('Mongoose default connection open to ' + mongoURI);
+  console.log('Mongoose default connection open');
 });
 
 // If the connection throws an error

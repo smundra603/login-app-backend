@@ -8,7 +8,7 @@ import LoginRoutes from './routes/loginRoutes';
 const app = express();
 mongoConnect(app);
 app.on('ready', () => {
-  app.listen(3000, () => {
+  app.listen(process.env.PORT, () => {
     console.log('app is ready');
   });
 });
