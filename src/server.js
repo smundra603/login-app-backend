@@ -9,7 +9,7 @@ const app = express();
 mongoConnect(app);
 app.on('ready', () => {
   app.listen(process.env.PORT, () => {
-    console.log('app is ready and listening to port ', process.env.PORT);
+    console.log('app is ready and listening on port ', process.env.PORT);
   });
 });
 
