@@ -2,50 +2,77 @@ import passport from 'passport';
 import { Router } from 'express';
 import LocalAuth from '../loginStrategies/emailPassword';
 import { checkIfAlreadyRegistered, getEncryptedPassword } from './helpers/userHelper';
-import { upsertUser } from '../repositories/user';
-import ErroCode from '../enums/errorCode';
+import { upsertUser, getUserViaPhoneNumber } from '../repositories/user';
+import { generateOTP, saveOTP, validateOTPAndGetRegisteredUser } from './helpers/otpHelper';
+import ErrorCode from '../enums/errorCode';
 
 LocalAuth(passport);
 
 const router = Router();
 
-// const successRedirect = '/loginSuccess';
-// const failureRedirect = '/loginFailure';
+// eslint-disable-next-line consistent-return
 
-router.post('/login', (req, res, next) => {
-  console.log(req.url);
+router.post('/verify-otp', async (req, res) => {
+  const { otp, phoneNumber } = req.body;
+  if (!otp || !phoneNumber) {
+    res.status(500).send({
+      success: false,
+      error_code: ErrorCode.INVALID_DATA
+    });
+  }
+  const otpUser = await validateOTPAndGetRegisteredUser(phoneNumber, otp);
+  if (!otpUser) {
+    return res.status(500).send({
+      success: false,
+      error_code: ErrorCode.INVALID_OTP
+    });
+  }
+  return res.send({
+    success: true,
+    user: otpUser
+  });
+});
+
+async function generateAndSendOTP({ phoneNumber }) {
+  const userExists = await getUserViaPhoneNumber(phoneNumber);
+  if (!userExists) {
+    return {
+      success: false,
+      error_code: ErrorCode.PHONE_NUMBER_NOT_REGISTERED
+    };
+  }
+  const otp = generateOTP();
+  await saveOTP(otp, phoneNumber);
+  return { success: true, otp };
+}
+router.post('/resend-otp', async (req, res) => {
+  const otpResponse = await generateAndSendOTP(req.body);
+  if (!otpResponse.success) {
+    return res.status(500).send(otpResponse);
+  }
+  return res.send(otpResponse);
+});
+
+router.post('/login', async (req, res, next) => {
+  const { mode = 'email_password' } = req.body;
+  if (mode === 'phoneNumber') {
+    const otpResponse = await generateAndSendOTP(req.body);
+    if (!otpResponse.success) {
+      return res.status(500).send(otpResponse);
+    }
+    return res.send(otpResponse);
+  }
+
   passport.authenticate('local', (err, user, info) => {
-    console.log('authenticate');
-    console.log(err);
-    console.log(user);
-    console.log(info);
     if (err) {
       return res.status(500).send({ success: false });
     }
     if (!user) {
-      return res.status(500).send({ succes: false, error_code: info.message });
+      return res.status(500).send({ success: false, error_code: info.message });
     }
     return res.send({ success: true, user });
   })(req, res, next);
 });
-
-router.get('/loginSuccess', (req, res) => {
-  console.log('req', res);
-  return res.send({ succes: 'true' });
-});
-
-router.get('/loginFailure', (req, res) => {
-  console.log('req', res);
-  return res.send({ succes: 'false' });
-});
-// passport.serializeUser((user, done) => {
-//   done(null, user.email);
-//   // where is this user.id going? Are we supposed to access this anywhere?
-// });
-
-// passport.deserializeUser((email, done) => {
-//   done(null, { email });
-// });bi
 
 router.post('/register', async (req, res) => {
   const { username, email, password, name, phoneNumber } = req.body;
@@ -53,7 +80,7 @@ router.post('/register', async (req, res) => {
   if (alreadyExists) {
     return res.send({
       success: false,
-      error_code: ErroCode.USER_ALREADY_EXISTS,
+      error_code: ErrorCode.USER_ALREADY_EXISTS,
       alreadyExistingFields
     });
   }
@@ -67,12 +94,12 @@ router.post('/register', async (req, res) => {
   });
   if (!upserted) {
     return res.status(500).send({
-      succes: false,
-      error_code: ErroCode.USER_NOT_CREATED
+      success: false,
+      error_code: ErrorCode.USER_NOT_CREATED
     });
   }
   return res.send({
-    succes: true
+    success: true
   });
 });
 

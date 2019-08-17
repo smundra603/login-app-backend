@@ -27,6 +27,9 @@ const UserSchema = new Schema({
   },
   password: {
     type: String
+  },
+  otp: {
+    type: Number
   }
 });
 

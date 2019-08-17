@@ -1,13 +1,8 @@
 import bcrypt from 'bcryptjs';
-import UserModel from '../../modles/user';
+import { getUserByUserNameOrEmail } from '../../repositories/user';
 
 export async function checkIfAlreadyRegistered(username, email, phoneNumber) {
-  const user = await UserModel.findOne(
-    {
-      $or: [{ username }, { email }]
-    },
-    { username: 1, email: 1, phoneNumber: 1 }
-  );
+  const user = await getUserByUserNameOrEmail(username, email);
   const alreadyExistsInfo = { alreadyExists: false, alreadyExistingFields: [] };
   if (user) {
     alreadyExistsInfo.alreadyExists = true;

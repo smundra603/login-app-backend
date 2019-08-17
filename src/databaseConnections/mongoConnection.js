@@ -18,9 +18,8 @@ mongoose.connection.on('error', (err) => {
 
 export default async function mongoConnect(app) {
   await mongoose.connect(mongoURI, {});
-
+  console.log('mongoose connected');
   app.emit('ready');
-  console.log('connected');
 }
 
 // If the Node process ends, close the Mongoose connection

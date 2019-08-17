@@ -1,7 +1,7 @@
 import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
-import UserModel from '../modles/user';
 import ErrorCode from '../enums/errorCode';
+import { getUserByEmail } from '../repositories/user';
 
 async function isValidPassword(password, currentPassword) {
   return bcrypt.compare(password, currentPassword);
@@ -16,11 +16,7 @@ export default function (passport) {
         passwordField: 'password'
       },
       async (req, email, password, done) => {
-        console.log('email, password', email, password);
-        const user = await UserModel.findOne({
-          email: email.toLowerCase()
-        });
-        console.log('user inside is', user);
+        const user = await getUserByEmail(email);
         if (!user) {
           return done(null, false, { message: ErrorCode.INCORRECT_USERNAME });
         }
