@@ -51,6 +51,7 @@ router.post('/login_mobile', async (req, res) => {
   return res.send(otpResponse);
 });
 
+// eslint-disable-next-line consistent-return
 router.post('/login', async (req, res, next) => {
   const { email, password } = req.body;
   if (!email || !password) {
