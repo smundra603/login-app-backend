@@ -2,7 +2,7 @@ import UserModel from '../modles/user';
 
 export async function upsertUser(userDoc) {
   try {
-    await UserModel.update({}, userDoc, { upsert: true });
+    await UserModel.updateOne({ username: userDoc.username }, userDoc, { upsert: true });
     return {
       upserted: true
     };
