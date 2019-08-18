@@ -2,8 +2,10 @@ import passport from 'passport';
 import { Router } from 'express';
 import LocalAuth from '../loginStrategies/emailPassword';
 import { checkIfAlreadyRegistered, getEncryptedPassword } from './helpers/userHelper';
-import { upsertUser, getUserViaPhoneNumber } from '../repositories/user';
-import { generateOTP, saveOTP, validateOTPAndGetRegisteredUser } from './helpers/otpHelper';
+import { upsertUser } from '../repositories/user';
+import { validateOTPAndGetRegisteredUser, generateAndSaveOTP } from './helpers/otpHelper';
+import { getCustomToken } from './helpers/tokenHelper';
+
 import ErrorCode from '../enums/errorCode';
 
 LocalAuth(passport);
@@ -27,26 +29,22 @@ router.post('/verify-otp', async (req, res) => {
       error_code: ErrorCode.INVALID_OTP
     });
   }
+  const custom_token = await getCustomToken({ user: otpUser });
   return res.send({
     success: true,
-    user: otpUser
+    custom_token
   });
 });
 
-async function generateAndSendOTP({ phoneNumber }) {
-  const userExists = await getUserViaPhoneNumber(phoneNumber);
-  if (!userExists) {
-    return {
+router.post('/login_mobile', async (req, res) => {
+  const { phoneNumber } = req.body;
+  if (!phoneNumber) {
+    return res.status(500).send({
       success: false,
-      error_code: ErrorCode.PHONE_NUMBER_NOT_REGISTERED
-    };
+      error_code: ErrorCode.INVALID_DATA
+    });
   }
-  const otp = generateOTP();
-  await saveOTP(otp, phoneNumber);
-  return { success: true, otp };
-}
-router.post('/resend-otp', async (req, res) => {
-  const otpResponse = await generateAndSendOTP(req.body);
+  const otpResponse = await generateAndSaveOTP(req.body);
   if (!otpResponse.success) {
     return res.status(500).send(otpResponse);
   }
@@ -54,23 +52,22 @@ router.post('/resend-otp', async (req, res) => {
 });
 
 router.post('/login', async (req, res, next) => {
-  const { mode = 'email_password' } = req.body;
-  if (mode === 'phoneNumber') {
-    const otpResponse = await generateAndSendOTP(req.body);
-    if (!otpResponse.success) {
-      return res.status(500).send(otpResponse);
-    }
-    return res.send(otpResponse);
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(500).send({
+      success: false,
+      error_code: ErrorCode.INVALID_DATA
+    });
   }
-
-  passport.authenticate('local', (err, user, info) => {
+  passport.authenticate('local', async (err, user, info) => {
     if (err) {
       return res.status(500).send({ success: false });
     }
     if (!user) {
       return res.status(500).send({ success: false, error_code: info.message });
     }
-    return res.send({ success: true, user });
+    const custom_token = await getCustomToken({ user });
+    return res.send({ success: true, custom_token });
   })(req, res, next);
 });
 
